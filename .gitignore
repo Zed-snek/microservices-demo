@@ -1,0 +1,8 @@
+/customer_service/src/main/resources/application.properties
+/order_service/src/main/resources/application.properties
+/product_service/src/main/resources/application.properties
+/.idea/
+
+/product_service/target/
+/order_service/target/
+/customer_service/target/
