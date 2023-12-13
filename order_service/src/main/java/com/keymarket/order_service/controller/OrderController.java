@@ -6,10 +6,7 @@ import com.keymarket.order_service.service.OrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
@@ -18,11 +15,21 @@ public class OrderController {
 
     private final OrderService orderService;
 
-
     @PostMapping("")
     public ResponseEntity<MySuccessResponse> makeOrder(@RequestBody NewOrderDto dto) {
-        System.out.println(dto);
+
+        orderService.makeOrder(dto);
+
         var response = new MySuccessResponse("Order is made");
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+
+    @PutMapping("/pay_order/{id}")
+    public ResponseEntity<MySuccessResponse> payOrder(@PathVariable Long id) {
+        orderService.payOrder(id);
+
+        var response = new MySuccessResponse("Request to pay is sent");
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 

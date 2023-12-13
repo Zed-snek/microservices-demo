@@ -41,4 +41,11 @@ public class CustomerController {
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
+
+    @GetMapping("/get_balance/{email}")
+    public String getBalance(@PathVariable String email) {
+        float balance = customerService.getBalanceOfCustomer(email);
+        return String.valueOf(balance);
+    }
+
 }

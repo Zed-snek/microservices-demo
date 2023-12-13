@@ -1,9 +1,20 @@
 package com.keymarket.order_service.service;
 
+import com.keymarket.order_service.dto.*;
+import com.keymarket.order_service.entity.Order;
+import com.keymarket.order_service.entity.OrderLine;
+import com.keymarket.order_service.exception.BusinessLogicException;
 import com.keymarket.order_service.repository.OrderLineRepository;
 import com.keymarket.order_service.repository.OrderRepository;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cloud.stream.function.StreamBridge;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.stream.Collectors;
+
 
 @Service
 @RequiredArgsConstructor
@@ -12,31 +23,87 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final OrderLineRepository orderLineRepository;
 
-    /* get order data:
-        HTTP/RPC: get order, then fetch the products from ProductService to get name, image and id
+    private final StreamBridge streamBridge;
 
-     */
+    //private final WebClient webClient = WebClient.create();
 
-
-    /* make order:
-        HTTP/RPC: send to product service to check availability of each product
-        if everything is okay, creates an order in database
-        QUEUE: then reduces number of availability in ProductService
-    */
+    //@Value("${api.productservice}")
+    //private String productServiceApiLink;
 
 
 
-    /* pay order
-        Make order Paid in Database (create timestamp)
+    @Transactional
+    public void makeOrder(NewOrderDto dto) {
+        var order = Order.builder()
+                .ordered(LocalDateTime.now())
+                .customerId(dto.getCustomerId())
+                .build();
+        var updatedOrder = orderRepository.save(order);
+        dto.setOrderId(updatedOrder.getId());
+        streamBridge.send("consumerProcessOrder-in-0", dto);
 
-        HTTP/RPC:send to CustomerService request to minus the balance, then minus money on the balance.
+        dto.getItems().forEach((key, value) -> {
+                    var line = OrderLine.builder()
+                            .order(updatedOrder)
+                            .idProduct(key)
+                            .pieces(value)
+                            .build();
+                    orderLineRepository.save(line);
+                });
+    }
 
-        Then show to user how much money has he paid from balance and from card:
-            CustomerService shows in console: "Sent request to email service to send the keys of bought items"
 
-     */
+    public void setPriceAfterConfirmation(OrderConfirmationPriceDto dto) {
+        System.out.println("setPriceAfterConfirmation(): " + dto);
+        var order = findById(dto.getOrderId());
+        order.setPrice(dto.getPrice());
+        orderRepository.save(order);
+    }
 
 
+    public void payOrder(Long id) {
+        var order = findById(id);
+
+        if (order.getPrice() <= 0)
+            throw new BusinessLogicException("Price hasn't been calculated yet");
+
+        var dto = PaymentRequestDto.builder()
+                .orderId(order.getId())
+                .costumerId(order.getCustomerId())
+                .price(order.getPrice())
+                .build();
+        streamBridge.send("consumerPaymentProcessing-in-0", dto);
+    }
+
+    public void confirmPayment(SuccessfulPaymentDto dto) {
+        var order = findById(dto.getOrderId());
+        order.setPaid(LocalDateTime.now());
+        orderRepository.save(order);
+
+        System.out.println("Order paid: \n" +
+                "- Paid from balance: " + dto.getPaidFromBalance() + "\n" +
+                "- Paid from other source: " + dto.getPaidFromOtherSource());
+    }
+
+    public OrderDto getOrderDataById(Long id) {
+        var order = findById(id);
+
+        return OrderDto.builder()
+                .ordered(order.getOrdered())
+                .paid(order.getPaid())
+                .price(order.getPrice())
+                .items(order.getOrderLines()
+                        .stream()
+                        .collect(Collectors.toMap(OrderLine::getId, OrderLine::getPieces))
+                )
+                .build();
+    }
+
+
+    private Order findById(Long id) {
+        return orderRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Order not found"));
+    }
 
 
 }

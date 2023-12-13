@@ -1,21 +1,22 @@
 package com.keymarket.product_service.service;
 
 
-import com.keymarket.product_service.dto.AvailabilityOfProduct;
-import com.keymarket.product_service.dto.NewProductDto;
-import com.keymarket.product_service.dto.ProductDto;
+import com.keymarket.product_service.dto.*;
 import com.keymarket.product_service.entity.Product;
 import com.keymarket.product_service.entity.ProductType;
 import com.keymarket.product_service.exception.BusinessLogicException;
 import com.keymarket.product_service.repository.ProductRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cloud.stream.function.StreamBridge;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 
 @Service
@@ -24,6 +25,8 @@ public class ProductService {
 
     private final ProductRepository productRepository;
     private final FileService fileService;
+
+    private final StreamBridge streamBridge;
 
 
     @Transactional
@@ -78,11 +81,35 @@ public class ProductService {
                 .toList();
     }
 
+
     public ProductDto getProductById(Long id) {
         var product = findById(id);
         return mapProductToDto(product);
     }
 
+
+    @Transactional
+    public void sumPriceAndCheckAvailabilityOfProducts(NewOrderDto dto) {
+
+        var items = dto.getItems();
+        var products = productRepository.findAllById(items.keySet());
+        float sum = products.stream()
+                .peek(p -> {
+                    int requestedAmount = items.get(p.getId());
+                    if (p.getAmount() < requestedAmount)
+                        throw new BusinessLogicException("Not enough keys on inventory");
+                    p.setAmount(p.getAmount() - requestedAmount);
+                    //productRepository.save(p);
+                })
+                .map(p -> items.get(p.getId()) * p.getPrice())
+                .reduce(0F, Float::sum);
+
+        var toSend = OrderConfirmationPriceDto.builder()
+                .orderId(dto.getOrderId())
+                .price(sum)
+                .build();
+        streamBridge.send("consumerOrderConfirmation-in-0", toSend);
+    }
 
 
     private ProductDto mapProductToDto(Product product) {
