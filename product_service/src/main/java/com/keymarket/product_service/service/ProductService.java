@@ -5,18 +5,16 @@ import com.keymarket.product_service.dto.*;
 import com.keymarket.product_service.entity.Product;
 import com.keymarket.product_service.entity.ProductType;
 import com.keymarket.product_service.exception.BusinessLogicException;
+import com.keymarket.product_service.messageBroker.produce.ProductProducer;
 import com.keymarket.product_service.repository.ProductRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.cloud.stream.function.StreamBridge;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 
 @Service
@@ -26,7 +24,8 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final FileService fileService;
 
-    private final StreamBridge streamBridge;
+
+    private final ProductProducer productProducer;
 
 
     @Transactional
@@ -99,7 +98,7 @@ public class ProductService {
                     if (p.getAmount() < requestedAmount)
                         throw new BusinessLogicException("Not enough keys on inventory");
                     p.setAmount(p.getAmount() - requestedAmount);
-                    //productRepository.save(p);
+                    productRepository.save(p);
                 })
                 .map(p -> items.get(p.getId()) * p.getPrice())
                 .reduce(0F, Float::sum);
@@ -108,7 +107,7 @@ public class ProductService {
                 .orderId(dto.getOrderId())
                 .price(sum)
                 .build();
-        streamBridge.send("consumerOrderConfirmation-in-0", toSend);
+        productProducer.sendOrderConfirmationToOrderService(toSend);
     }
 
 

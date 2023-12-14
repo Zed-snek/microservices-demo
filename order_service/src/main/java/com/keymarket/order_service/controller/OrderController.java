@@ -18,9 +18,9 @@ public class OrderController {
     @PostMapping("")
     public ResponseEntity<MySuccessResponse> makeOrder(@RequestBody NewOrderDto dto) {
 
-        orderService.makeOrder(dto);
+        Long id = orderService.makeOrder(dto);
 
-        var response = new MySuccessResponse("Order is made");
+        var response = new MySuccessResponse("Order is made, its id: " + id);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 

@@ -2,12 +2,11 @@ package com.keymarket.customer_service.service;
 
 import com.keymarket.customer_service.dto.*;
 import com.keymarket.customer_service.entity.Customer;
-import com.keymarket.customer_service.exception.BusinessLogicException;
 import com.keymarket.customer_service.exception.UserAlreadyExistsException;
+import com.keymarket.customer_service.messageBroker.producer.CustomerProducer;
 import com.keymarket.customer_service.repository.CustomerRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.cloud.stream.function.StreamBridge;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -16,7 +15,7 @@ public class CustomerService {
 
     private final CustomerRepository customerRepository;
 
-    private final StreamBridge streamBridge;
+    private final CustomerProducer customerProducer;
 
 
     public void registerCustomer(NewCustomerDto dto) {
@@ -74,7 +73,8 @@ public class CustomerService {
             requestBuilder.paidFromBalance(dto.getPrice());
         }
         customerRepository.save(customer);
-        streamBridge.send("consumerSuccessfulPayment-in-0", requestBuilder.build());
+
+        customerProducer.sendSuccessfulPaymentToOrderService(requestBuilder.build());
     }
 
 

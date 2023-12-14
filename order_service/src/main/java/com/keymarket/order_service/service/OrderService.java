@@ -4,6 +4,7 @@ import com.keymarket.order_service.dto.*;
 import com.keymarket.order_service.entity.Order;
 import com.keymarket.order_service.entity.OrderLine;
 import com.keymarket.order_service.exception.BusinessLogicException;
+import com.keymarket.order_service.messageBroker.produce.OrderProducer;
 import com.keymarket.order_service.repository.OrderLineRepository;
 import com.keymarket.order_service.repository.OrderRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -23,7 +24,8 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final OrderLineRepository orderLineRepository;
 
-    private final StreamBridge streamBridge;
+    private final OrderProducer orderProducer;
+
 
     //private final WebClient webClient = WebClient.create();
 
@@ -33,14 +35,15 @@ public class OrderService {
 
 
     @Transactional
-    public void makeOrder(NewOrderDto dto) {
+    public Long makeOrder(NewOrderDto dto) {
         var order = Order.builder()
                 .ordered(LocalDateTime.now())
                 .customerId(dto.getCustomerId())
                 .build();
         var updatedOrder = orderRepository.save(order);
         dto.setOrderId(updatedOrder.getId());
-        streamBridge.send("consumerProcessOrder-in-0", dto);
+
+        orderProducer.sendOrderToProductService(dto);
 
         dto.getItems().forEach((key, value) -> {
                     var line = OrderLine.builder()
@@ -50,6 +53,7 @@ public class OrderService {
                             .build();
                     orderLineRepository.save(line);
                 });
+        return updatedOrder.getId();
     }
 
 
@@ -72,7 +76,7 @@ public class OrderService {
                 .costumerId(order.getCustomerId())
                 .price(order.getPrice())
                 .build();
-        streamBridge.send("consumerPaymentProcessing-in-0", dto);
+        orderProducer.sendPaymentToCustomerService(dto);
     }
 
     public void confirmPayment(SuccessfulPaymentDto dto) {

@@ -1,0 +1,37 @@
+databaseChangeLog:
+  - changeSet:
+      id: Create orders table
+      author: Eduard Savchuk
+      changes:
+        - createTable:
+            tableName: orders
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: ordered
+                  type: timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: paid
+                  type: timestamp
+                  constraints:
+                    nullable: true
+              - column:
+                  name: price
+                  type: decimal
+                  constraints:
+                    nullable: true
+              - column:
+                  name: customer_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+
+

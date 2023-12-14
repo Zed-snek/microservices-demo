@@ -1,0 +1,32 @@
+databaseChangeLog:
+  - changeSet:
+      id: Create order lines table
+      author: Eduard Savchuk
+      changes:
+        - createTable:
+            tableName: order_line
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: pieces
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: id_product
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: id_order
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_order_orderline
+                    references: orders(id)

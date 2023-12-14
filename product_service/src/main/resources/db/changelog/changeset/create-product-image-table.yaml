@@ -1,0 +1,27 @@
+databaseChangeLog:
+  - changeSet:
+      id: Create product image table
+      author: Eduard Savchuk
+      changes:
+        - createTable:
+            tableName: product_image
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: filename
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: id_product
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_product_image
+                    references: product(id)
