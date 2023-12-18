@@ -21,6 +21,12 @@ public class MadeOrdersProcessing {
     }
 
 
+
+
+
+
+
+
     //testing, no usage
     @Bean
     public Consumer<ProductItemDto> consumerProcessProduct() {

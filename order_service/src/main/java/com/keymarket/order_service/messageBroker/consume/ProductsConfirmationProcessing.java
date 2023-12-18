@@ -25,5 +25,4 @@ public class ProductsConfirmationProcessing {
         return orderService::confirmPayment;
     }
 
-
 }

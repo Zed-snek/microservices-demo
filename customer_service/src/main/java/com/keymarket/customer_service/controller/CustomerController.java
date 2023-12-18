@@ -1,5 +1,6 @@
 package com.keymarket.customer_service.controller;
 
+import com.keymarket.customer_service.dto.CouponDto;
 import com.keymarket.customer_service.dto.CustomerDto;
 import com.keymarket.customer_service.dto.NewCustomerDto;
 import com.keymarket.customer_service.dto.BalanceDto;
@@ -9,6 +10,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 
 @RequiredArgsConstructor
@@ -46,6 +49,12 @@ public class CustomerController {
     public String getBalance(@PathVariable String email) {
         float balance = customerService.getBalanceOfCustomer(email);
         return String.valueOf(balance);
+    }
+
+
+    @GetMapping(value = "/coupon/{customerId}")
+    public List<CouponDto> getProductsInfo(@PathVariable Long customerId) {
+        return customerService.getCouponsByCustomerId(customerId);
     }
 
 }

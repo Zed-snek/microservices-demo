@@ -5,19 +5,19 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
-import java.util.Map;
-
+import java.util.List;
 
 @Getter
 @Setter
 @Builder
 public class OrderDto {
 
-    private LocalDateTime ordered;
+    private Long id;
 
     private LocalDateTime paid;
 
     private float price;
 
-    private Map<Long, Integer> items; //Long = id of product || Integer = quantity of ordered
+    private List<ProductDto> products;
+
 }

@@ -2,6 +2,7 @@ package com.keymarket.product_service.controller;
 
 import com.keymarket.product_service.dto.NewProductDto;
 import com.keymarket.product_service.dto.ProductDto;
+import com.keymarket.product_service.dto.ProductItemDto;
 import com.keymarket.product_service.entity.ProductType;
 import com.keymarket.product_service.response.MySuccessResponse;
 import com.keymarket.product_service.service.ProductService;
@@ -11,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Set;
 
 
 @RequiredArgsConstructor
@@ -78,6 +80,13 @@ public class ProductController {
     public ProductDto getById(@PathVariable Long id) {
 
         return productService.getProductById(id);
+    }
+
+
+    @GetMapping("/get_products")
+    public List<ProductItemDto> getProductsInfo(@RequestParam("items") Set<Long> items) {
+
+        return productService.getProductsByIds(items);
     }
 
 }

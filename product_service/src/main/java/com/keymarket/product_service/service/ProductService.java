@@ -87,6 +87,19 @@ public class ProductService {
     }
 
 
+    public List<ProductItemDto> getProductsByIds(Iterable<Long> ids) {
+        var products = productRepository.findAllById(ids);
+
+        return products.stream()
+                .map(product -> ProductItemDto.builder()
+                        .id(product.getId())
+                        .name(product.getName())
+                        .image(product.getImages().get(0).getFilename())
+                        .build())
+                .toList();
+    }
+
+
     @Transactional
     public void sumPriceAndCheckAvailabilityOfProducts(NewOrderDto dto) {
 

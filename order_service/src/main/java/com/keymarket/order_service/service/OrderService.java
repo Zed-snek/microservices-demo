@@ -4,16 +4,21 @@ import com.keymarket.order_service.dto.*;
 import com.keymarket.order_service.entity.Order;
 import com.keymarket.order_service.entity.OrderLine;
 import com.keymarket.order_service.exception.BusinessLogicException;
+import com.keymarket.order_service.feignClients.CustomerClient;
 import com.keymarket.order_service.messageBroker.produce.OrderProducer;
+import com.keymarket.order_service.feignClients.ProductClient;
 import com.keymarket.order_service.repository.OrderLineRepository;
 import com.keymarket.order_service.repository.OrderRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.cloud.stream.function.StreamBridge;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 
@@ -24,14 +29,9 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final OrderLineRepository orderLineRepository;
 
+    private final ProductClient productClient;
+    private final CustomerClient customerClient;
     private final OrderProducer orderProducer;
-
-
-    //private final WebClient webClient = WebClient.create();
-
-    //@Value("${api.productservice}")
-    //private String productServiceApiLink;
-
 
 
     @Transactional
@@ -76,6 +76,7 @@ public class OrderService {
                 .costumerId(order.getCustomerId())
                 .price(order.getPrice())
                 .build();
+
         orderProducer.sendPaymentToCustomerService(dto);
     }
 
@@ -89,17 +90,40 @@ public class OrderService {
                 "- Paid from other source: " + dto.getPaidFromOtherSource());
     }
 
-    public OrderDto getOrderDataById(Long id) {
-        var order = findById(id);
 
-        return OrderDto.builder()
-                .ordered(order.getOrdered())
-                .paid(order.getPaid())
-                .price(order.getPrice())
-                .items(order.getOrderLines()
-                        .stream()
-                        .collect(Collectors.toMap(OrderLine::getId, OrderLine::getPieces))
-                )
+
+    public LastOrdersInfoDto getLastOrdersInfo(Long customerId) throws ExecutionException, InterruptedException {
+        var orders = orderRepository.findFirst10ByCustomerId(customerId);
+        var set = orders.stream()
+                .flatMap(order -> order.getOrderLines().stream().map(OrderLine::getIdProduct))
+                .collect(Collectors.toSet());
+        
+        CompletableFuture<List<CouponDto>> couponList = CompletableFuture
+                .supplyAsync(() -> customerClient.getProductsInfo(customerId));
+
+        var productList = CompletableFuture
+                .supplyAsync(() -> productClient.getProductsInfo(set)).get();
+
+        return LastOrdersInfoDto.builder()
+                .orders(orders.stream()
+                        .map(order -> OrderDto.builder()
+                                .id(order.getId())
+                                .paid(order.getPaid())
+                                .price(order.getPrice())
+                                .products(order.getOrderLines()
+                                        .stream()
+                                        .map(line -> {
+                                            var product = productList.stream()
+                                                    .filter(dto -> dto.getId().equals(line.getIdProduct()))
+                                                    .findFirst()
+                                                    .orElseThrow(() -> new BusinessLogicException("Internal error"));
+                                            product.setQuantity(line.getPieces());
+                                            return product;
+                                        })
+                                        .toList())
+                                .build())
+                        .toList())
+                .coupons(couponList.get())
                 .build();
     }
 

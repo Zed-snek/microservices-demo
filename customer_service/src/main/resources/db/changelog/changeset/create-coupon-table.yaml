@@ -1,0 +1,32 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-coupon
+      author: Eduard Savchuk
+      changes:
+        - createTable:
+            tableName: coupon
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: discount_percentage
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: max_price
+                  type: decimal
+                  constraints:
+                    nullable: false
+              - column:
+                  name: id_customer
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_customer_id
+                    references: customer(id)
